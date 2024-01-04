@@ -1,161 +1,176 @@
 <template>
-  <div class="login-box">
-    <div class="login-logo">
-      <!-- <svg-icon name="logo" :size="45" /> -->
-      <img src="~@/assets/images/logo.png" width="45" />
-      <h1 class="mb-0 ml-2 text-3xl font-bold">Antd Admin</h1>
-    </div>
-    <a-form
-      layout="horizontal"
-      :model="state.formInline"
-      @submit.prevent="handleSubmit"
+  <div class="wh-full flex-col bg-[url(@/assets/images/login_bg.webp)] bg-cover">
+    <div
+      class="m-auto max-w-700 min-w-345 f-c-c rounded-8 bg-opacity-20 bg-cover p-12 card-shadow auto-bg"
     >
-      <a-form-item>
+      <div class="hidden w-380 px-20 py-35 md:block">
+        <img src="@/assets/images/login_banner.webp" class="w-full" alt="login_banner" />
+      </div>
+
+      <div class="w-320 flex-col px-20 py-32">
+        <h2 class="f-c-c text-24 text-#6a6a6a font-normal">
+          <img src="@/assets/images/logo.png" height="50" class="mr-12" />
+          {{ title }}
+        </h2>
         <a-input
-          v-model:value="state.formInline.username"
-          size="large"
-          placeholder="rootadmin"
+          v-model:value="loginInfo.username"
+          autofocus
+          class="mt-32 h-40 items-center"
+          placeholder="请输入用户名"
+          :maxlength="20"
         >
-          <template #prefix><user-outlined type="user" /></template>
-        </a-input>
-      </a-form-item>
-      <a-form-item>
-        <a-input
-          v-model:value="state.formInline.password"
-          size="large"
-          type="password"
-          placeholder="123456"
-          autocomplete="new-password"
-        >
-          <template #prefix><lock-outlined type="user" /></template>
-        </a-input>
-      </a-form-item>
-      <!-- <a-form-item>
-        <a-input
-          v-model:value="state.formInline.verifyCode"
-          placeholder="验证码"
-          :maxlength="4"
-          size="large"
-        >
-          <template #prefix><SafetyOutlined /></template>
-          <template #suffix>
-            <img
-              :src="state.captcha"
-              class="absolute right-0 h-full cursor-pointer"
-              @click="setCaptcha"
-            />
+          <template #prefix>
+            <i class="i-fe:user mr-12 opacity-20" />
           </template>
         </a-input>
-      </a-form-item> -->
-      <a-form-item>
-        <a-button
-          type="primary"
-          html-type="submit"
-          size="large"
-          :loading="state.loading"
-          block
+        <a-input-password
+          v-model:value="loginInfo.password"
+          class="mt-20 h-40 items-center"
+          placeholder="请输入密码"
+          :maxlength="20"
+          @keydown.enter="handleLogin()"
         >
-          登录
-        </a-button>
-      </a-form-item>
-    </a-form>
+          <template #prefix>
+            <i class="i-fe:lock mr-12 opacity-20" />
+          </template>
+        </a-input-password>
+
+        <div class="mt-20 flex items-center">
+          <a-input
+            v-model:value="loginInfo.captcha"
+            class="h-40 items-center"
+            placeholder="请输入验证码"
+            :maxlength="4"
+            @keydown.enter="handleLogin()"
+          >
+            <template #prefix>
+              <i class="i-fe:key mr-12 opacity-20" />
+            </template>
+          </a-input>
+          <img
+            v-if="captchaUrl"
+            :src="captchaUrl"
+            alt="验证码"
+            height="40"
+            class="ml-12 w-80 cursor-pointer"
+            @click="initCaptcha"
+          />
+        </div>
+
+        <a-checkbox v-modal:checked="isRemember" class="mt-20">记住我</a-checkbox>
+
+        <div class="mt-20 flex items-center">
+          <a-button class="h-40 flex-1 rounded-5 text-16" type="primary" @click="quickLogin()">
+            一键体验
+          </a-button>
+
+          <a-button
+            class="ml-32 h-40 flex-1 rounded-5 text-16"
+            type="primary"
+            :loading="loading"
+            @click="handleLogin()"
+          >
+            登录
+          </a-button>
+        </div>
+      </div>
+    </div>
+
+    <TheFooter class="py-12" />
   </div>
 </template>
 
 <script setup>
-import { reactive } from 'vue';
-import {
-  UserOutlined,
-  LockOutlined,
-  SafetyOutlined
-} from '@ant-design/icons-vue';
-// import { useRoute, useRouter } from 'vue-router';
-import { message } from 'ant-design-vue';
-// import { getImageCaptcha } from '@/api/login';
+import { throttle, lStorage } from '@/utils'
+import { useStorage } from '@vueuse/core'
+import api from './api'
+import { useUserStore, useAuthStore } from '@/store'
+import { initUserAndPermissions } from '@/router'
 
-const state = reactive({
-  loading: false,
-  captcha: '',
-  formInline: {
-    username: '',
-    password: '',
-    verifyCode: '',
-    captchaId: ''
-  }
-});
+const userStore = useUserStore()
+const authStore = useAuthStore()
+const router = useRouter()
+const route = useRoute()
+const title = import.meta.env.VITE_TITLE
 
-// const route = useRoute();
-// const router = useRouter();
+const isLogined = computed(() => {
+  return authStore.accessToken && userStore.roles
+})
 
-// const userStore = useUserStore();
-
-// const setCaptcha = async () => {
-//   const { id, img } = await getImageCaptcha({ width: 100, height: 50 });
-//   state.captcha = img;
-//   state.formInline.captchaId = id;
-// };
-// setCaptcha();
-
-const handleSubmit = async () => {
-  const { username, password, verifyCode } = state.formInline;
-  if (username.trim() == '' || password.trim() == '') {
-    return message.warning('用户名或密码不能为空！');
-  }
-  if (!verifyCode) {
-    return message.warning('请输入验证码！');
-  }
-  message.loading('登录中...', 0);
-  state.loading = true;
-  console.log(state.formInline);
-  // params.password = md5(password)
-
-  // const [err] = await to(userStore.login(state.formInline));
-  // if (err) {
-  //   Modal.error({
-  //     title: () => '提示',
-  //     content: () => err.message,
-  //   });
-  //   setCaptcha();
-  // } else {
-  //   message.success('登录成功！');
-  //   setTimeout(() => router.replace((route.query.redirect) ?? '/'));
-  // }
-  state.loading = false;
-  message.destroy();
-};
-</script>
-
-<style lang="less" scoped>
-.login-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100vw;
-  height: 100vh;
-  padding-top: 240px;
-  background: url('@/assets/login.svg');
-  background-size: 100%;
-
-  .login-logo {
-    display: flex;
-    align-items: center;
-    margin-bottom: 30px;
-
-    .svg-icon {
-      font-size: 48px;
-    }
-  }
-
-  :deep(.ant-form) {
-    width: 400px;
-
-    .ant-col {
-      width: 100%;
-    }
-
-    .ant-form-item-label {
-      padding-right: 6px;
-    }
+const loginInfo = ref({
+  username: '',
+  password: '',
+})
+function initLoginInfo() {
+  const localLoginInfo = lStorage.get('loginInfo')
+  if (localLoginInfo) {
+    loginInfo.value.username = localLoginInfo.username || ''
+    loginInfo.value.password = localLoginInfo.password || ''
   }
 }
-</style>
+
+const captchaUrl = ref('')
+const initCaptcha = throttle(() => {
+  captchaUrl.value = '/api/auth/captcha?' + Date.now()
+}, 500)
+
+if (isLogined.value) {
+  router.push({ path: '/role-select', query: route.query })
+} else {
+  initLoginInfo()
+  initCaptcha()
+}
+
+function quickLogin() {
+  loginInfo.value.username = 'admin'
+  loginInfo.value.password = '123456'
+  handleLogin(true)
+}
+
+const isRemember = useStorage('isRemember', true)
+const loading = ref(false)
+async function handleLogin(isQuick) {
+  const { username, password, captcha } = loginInfo.value
+  if (!username || !password) return $message.warning('请输入用户名和密码')
+  if (!isQuick && !captcha) return $message.warning('请输入验证码')
+  try {
+    loading.value = true
+    $message.loading('正在验证，请稍后...', { key: 'login' })
+    const { data } = await api.login({ username, password: password.toString(), captcha, isQuick })
+    if (isRemember.value) {
+      lStorage.set('loginInfo', { username, password })
+    } else {
+      lStorage.remove('loginInfo')
+    }
+    onLoginSuccess(data)
+  } catch (error) {
+    // 10003为验证码错误专属业务码
+    if (error?.code === 10003) {
+      // 为防止爆破，验证码错误则刷新验证码
+      initCaptcha()
+    }
+    $message.destroy('login')
+    console.error(error)
+  }
+  loading.value = false
+}
+
+async function onLoginSuccess(data = {}) {
+  authStore.setToken(data)
+  $message.loading('登录中...', { key: 'login' })
+  try {
+    await initUserAndPermissions()
+    $message.success('登录成功', { key: 'login' })
+    if (route.query.redirect) {
+      const path = route.query.redirect
+      delete route.query.redirect
+      router.push({ path, query: route.query })
+    } else {
+      router.push('/')
+    }
+  } catch (error) {
+    console.error(error)
+    $message.destroy('login')
+  }
+}
+</script>

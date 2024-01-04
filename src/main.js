@@ -1,15 +1,21 @@
-import { createApp } from 'vue';
-import { setupStore } from '@/store';
-import App from './App.vue';
-import { setupRouter } from './router';
-import { setupAntd, setupDirectives } from '@/plugins';
-import 'uno.css';
+import '@/styles/reset.css'
+import '@/styles/global.scss'
+import 'uno.css'
 
-const app = createApp(App);
+import { createApp } from 'vue'
+import App from './App.vue'
+import { setupRouter } from './router'
+import { setupStore } from './store'
+import { setupNaiveDiscreteApi } from './utils'
+import { setupDirectives } from './directives'
 
-setupStore(app);
-await setupRouter(app);
-setupAntd(app);
-setupDirectives(app);
+async function bootstrap() {
+  const app = createApp(App)
+  setupStore(app)
+  setupNaiveDiscreteApi()
+  setupDirectives(app)
+  await setupRouter(app)
+  app.mount('#app')
+}
 
-app.mount('#app');
+bootstrap()

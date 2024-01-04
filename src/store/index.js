@@ -1,9 +1,10 @@
-import { createPinia } from 'pinia';
-
-const store = createPinia();
+import { createPinia } from 'pinia'
+import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 
 export function setupStore(app) {
-  app.use(store);
+  const pinia = createPinia()
+  pinia.use(piniaPluginPersistedstate)
+  app.use(pinia)
 }
 
-export { store };
+export * from './modules'

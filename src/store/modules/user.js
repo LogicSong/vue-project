@@ -1,70 +1,61 @@
-import { defineStore } from 'pinia';
-import { store } from '@/store';
+import { defineStore } from 'pinia'
+import api from '@/api'
+import { useAuthStore } from '@/store'
 
-export const useUserStore = defineStore({
-  id: 'user',
+export const useUserStore = defineStore('user', {
   state: () => ({
-    name: 'amdin',
-    perms: [],
-    menus: [],
-    userInfo: {}
+    userInfo: null,
   }),
   getters: {
-    getName() {
-      return this.name;
+    userId() {
+      return this.userInfo?.id
     },
-    getPerms() {
-      return this.perms;
-    }
+    username() {
+      return this.userInfo?.username
+    },
+    nickName() {
+      return this.userInfo?.nickName
+    },
+    avatar() {
+      return this.userInfo?.avatar
+    },
+    currentRole() {
+      return this.userInfo?.currentRole || {}
+    },
+    roles() {
+      return this.userInfo?.roles || []
+    },
   },
   actions: {
-    /** 清空token及用户信息 */
-    resetToken() {
-      this.perms = [];
-      this.menus = [];
-      this.userInfo = {};
-    },
-    /** 登录成功保存token */
-    setToken(token) {
-      console.log(token);
-    },
-    /** 登录 */
-    async login(params) {
+    async getUserInfo() {
       try {
-        // const { data } = await login(params);
-        // this.setToken(data.token);
-        // return this.afterLogin();
-        // TODO 登录
-        console.log(params);
+        const res = await api.getUser()
+        const { id, username, profile, roles, currentRole } = res.data || {}
+        this.userInfo = {
+          id,
+          username,
+          avatar: profile?.avatar,
+          nickName: profile?.nickName,
+          gender: profile?.gender,
+          address: profile?.address,
+          email: profile?.email,
+          roles,
+          currentRole,
+        }
+        return Promise.resolve(res.data)
       } catch (error) {
-        return Promise.reject(error);
+        return Promise.reject(error)
       }
     },
-    /** 登录成功之后, 获取用户信息以及生成权限路由 */
-    async afterLogin() {
-      // TODO 权限路由
-      // try {
-      //   const [userInfo, { perms, menus }] = await Promise.all([getInfo(), permmenu()]);
-      //   this.perms = perms;
-      //   this.name = userInfo.name;
-      //   this.userInfo = userInfo;
-      //   // 生成路由
-      //   const generatorResult = await generatorDynamicRouter(menus);
-      //   this.menus = generatorResult.menus.filter((item) => !item.meta?.hideInMenu);
-      //   return { menus, perms, userInfo };
-      // } catch (error) {
-      //   return Promise.reject(error);
-      //   // return this.logout();
-      // }
+    async switchCurrentRole(roleCode) {
+      const { data } = await api.switchCurrentRole(roleCode)
+      const authStore = useAuthStore()
+      authStore.resetLoginState()
+      await nextTick()
+      authStore.setToken(data)
     },
-    /** 登出 */
-    async logout() {
-      // TODO 登出
-    }
-  }
-});
-
-// 在组件setup函数外使用
-export function useUserStoreWithOut() {
-  return useUserStore(store);
-}
+    resetUser() {
+      this.$reset()
+    },
+  },
+})
